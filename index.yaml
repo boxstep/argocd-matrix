@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  matrix:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-05-10T09:29:04.593192636Z"
+    description: Dynamic Deployment Matrix Helm chart for Kubernetes
+    digest: 2e9b6df1a685e33ec4ad4c0de11e741ae918ae72fb10da8b2d6ebdc4fe7a1985
+    name: matrix
+    type: application
+    urls:
+    - https://github.com/boxstep/argocd-matrix/releases/download/matrix-0.1.0/matrix-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-05-10T09:29:04.593198006Z"
