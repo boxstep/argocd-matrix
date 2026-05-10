@@ -1,0 +1,102 @@
+{{- range $defaultName, $_ := .Values.infra_apps }}
+{{- if or .create (eq .create nil) }}
+{{- $name := .name | default $defaultName }}
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ $name }}-{{ $.Values.instance_id }}
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  pim/instance-name: {{ $.Values.instance_name }}
+                  argocd.argoproj.io/secret-type: cluster
+                  {{- with .clusters_selector }}
+                  {{- toYaml . | nindent 18 }}
+                  {{- end }}
+          - list:
+              elements:
+              {{- range $releaseName, $_ := .helm_charts }}
+              {{- if or .enabled (eq .enabled nil) }}
+              - releaseName: {{ .releaseName }}
+                {{- if hasKey . "path" }}
+                chart: ""
+                path: {{ .path }}
+                {{- else }}
+                chart: {{ .chart | default $releaseName}}
+                path: ""
+                {{- end }}
+                config_repo_url: {{ .config_repo_url | default $.Values.defaults.config_repo_url }}
+                repoURL: {{ .repoURL}}
+                version: {{ .version }}
+                namespace: {{ .namespace | default $releaseName }}
+                extraSyncOptions: {{ .extraSyncOptions }}
+                ignoreDifferences: {{ (.ignoreDifferences) | toYaml | nindent 18 }}
+                {{- with .parameters  }}
+                parameters:
+                {{- range $name, $value := . }}
+                - name: {{ $name | quote }}
+                  value: {{ $value | quote }}
+                {{- end }}
+                {{- end }}
+              {{- end }}
+              {{- end }}
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: '{{`{{ .releaseName }}`}}-{{`{{ index .metadata.labels "pim/region" }}`}}-{{ $.Values.instance_id }}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/managed-by: argocd-autopilot
+        app.kubernetes.io/name: '{{`{{ .releaseName }}`}}-{{`{{ index .metadata.labels "pim/region" }}`}}-{{ $.Values.instance_id }}'
+    spec:
+      destination:
+        name: '{{`{{ .name }}`}}'
+        namespace: '{{`{{ .namespace }}`}}'
+      syncPolicy:
+        managedNamespaceMetadata:
+          labels:
+            team: {{ $.Values.defaults.team | default "infrastructure" }}
+        syncOptions:
+        - CreateNamespace=true
+        - '{{`{{ .extraSyncOptions }}`}}'
+      {{- with .automated_sync }}
+        {{- if .enabled }}
+        automated:
+          {{ toYaml .settings | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      project: {{ $.Values.project }}
+  templatePatch: |
+    spec:
+      {{`{{- with .ignoreDifferences }}`}}
+      ignoreDifferences:
+      {{`{{ . | toYaml | nindent 4 }}`}}
+      {{`{{- end }}`}}
+      sources:
+        - repoURL: '{{`{{ .repoURL }}`}}'
+          chart: '{{`{{ .chart }}`}}'
+          path: '{{`{{ .path }}`}}'
+          targetRevision: '{{`{{ .version }}`}}'
+          helm:
+            releaseName: '{{`{{ .releaseName }}`}}'
+            {{`{{- with .parameters }}`}}
+            parameters:
+            {{`{{ . | toYaml | nindent 10 }}`}}
+            {{`{{- end }}`}}
+            valueFiles:
+              - $values/config/environments/{{ $.Values.project }}/{{`{{ .releaseName }}`}}.yaml
+            ignoreMissingValueFiles: true
+        - repoURL: {{`{{ .config_repo_url | default $.Values.defaults.config_repo_url}}`}}
+          targetRevision: {{ .config_branch }}
+          path: config/environments/{{ $.Values.project }}/{{`{{ .releaseName }}`}}
+          ref: values
+{{- end  }}
+---
+{{- end }}

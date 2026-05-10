@@ -1,0 +1,28 @@
+# instance_id: "k3s or k8s"
+# instance_name: "in-cluster"
+### -- The project to create the ApplicationSet in
+# project: "main"
+#
+#
+# defaults:
+  ### -- The URL of the Git repository to use for configuration
+  # config_repo_url: 
+
+
+### -- The list of applications to create
+# infra_apps:
+  ### Example application group
+  # example-app-group:
+  #   config_branch: main
+  #   automated_sync:
+  #     enabled: true
+  #     settings:
+  #       selfHeal: true
+  #       prune: true
+  #   helm_charts:
+  #     nginx:
+  #       chart: nginx
+  #       repoURL: https://charts.bitnami.com/bitnami
+  #       releaseName: nginx
+  #       version:  21.1.23
+  #       namespace: nginx
